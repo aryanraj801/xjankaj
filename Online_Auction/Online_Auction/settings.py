@@ -1,4 +1,4 @@
-# Online_Auction &gt; Online_Auction &gt; settings.py 
+# Online_Auction &gt; Online_Auction &gt; settings.py  """
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -7,15 +7,23 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '_igtoud8=l*xejhiwtfz$ce-fu*%80&amp;^hybem91#g#)5j7td#z'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.githubpreview.dev',
+    'https://*.github.dev',
+    'https://*.app.github.dev'
+]
 
-ALLOWED_HOSTS = []
-
+# Session cookie settings for Codespaces
+SESSION_COOKIE_SECURE = False  # Set to False for development
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Application definition
 
@@ -34,6 +42,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -44,7 +53,25 @@ ROOT_URLCONF = 'Online_Auction.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+],
+WSGI_APPLICATION = 'Online_Auction.wsgi.application'
+
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -56,10 +83,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = 'Online_Auction.wsgi.application'
-
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 

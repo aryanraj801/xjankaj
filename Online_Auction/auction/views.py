@@ -1,120 +1,199 @@
-from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from auction.models import Item, User  # Import specific models explicitly
-from datetime import date
-today=date.today()
-global_var = None # Initialize it with a default value
-# Function to set the global variable to a dynamic value
-def set_global_variable(value):
-    global global_var
-    global_var = value
-# Function to access the global variable
-def access_global_variable():
-    return global_var
-def maxbid(id):
-    li=[]
-    global maximum
-    item = Item.objects.get(id=id)
-    print("item id-->", item.id)
-    user = User.objects.all().values()
-    # item = Item.objects.all().values()
-    for i in user:
-        a = i['bid_amt']
-        print("-->", a)
-        li.append(a)
-        maximum = max(li)
-    print(li)
-    print("maximum", maximum)
-    item.max_bid = maximum
-    item.save()
-    print("Item Saved")
-    return maximum
-        # print(a)
-        # li.append(i)
-        # print(&quot;list--&gt;&quot;,li)
-        # print(max(li))
-        # return a
-def bid(request):
-    item = Item.objects.all()
-    # user = User.objects.all()
-    maxbid()
-    # print(item.item_name.values)
-    return render(request, 'base.html', {"item": item})
-def login(request):
-    if request.method == 'POST':
-        email = request.POST['email']
-        print(email)
-        password = request.POST['password']
-        print(password)
-        item = Item.objects.all()
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import Item, UserProfile, Bid, Category
+from django.db.models import Q
+
+def home(request):
+    # Start with all active items
+    items = Item.objects.filter(status='active')
+    
+    # Get all categories for the filter dropdown
+    categories = Category.objects.all()
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        items = items.filter(
+            Q(title__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    # Category filter
+    category_id = request.GET.get('category', '').strip()
+    if category_id:
+        items = items.filter(category_id=category_id)
+    
+    # Status filter
+    status = request.GET.get('status', '').strip()
+    if status:
+        items = items.filter(status=status)
+    
+    # Price range filters
+    min_price = request.GET.get('min_price', '').strip()
+    if min_price:
         try:
-            user = User.objects.get(email=email)
-            print("userpass-->", user.password)
-            if user is not None:
-                if password == user.password:
-                    global mailid
-                    # print(&quot;Mail id here---&gt;&quot;,item.item_status)
-                    set_global_variable(email)
-                    mailid = email
-                    mail= email
-                    # print(&quot;Ye rhi dates--&gt;&quot;,item.start_date)
-                    # print(&quot;ye print ho gyi---&gt;&quot;,mailid)
-                    # print(&quot;outer funciton global ---&gt;&quot;,mail)
-                    return render(request, 'base.html', {"item": item, "mailid": mailid})
-                else:
-                    print("Wrong pass")
-                    return HttpResponse("Wrong Password")
-        except:
-            return HttpResponse("email id Not exist")
-            print("email id Not exist")
-    return render(request,'login.html')
+            items = items.filter(current_bid__gte=float(min_price))
+        except ValueError:
+            pass  # Ignore invalid price input
+    
+    max_price = request.GET.get('max_price', '').strip()
+    if max_price:
+        try:
+            items = items.filter(current_bid__lte=float(max_price))
+        except ValueError:
+            pass  # Ignore invalid price input
+    
+    # Order by newest first
+    items = items.order_by('-created_at')
+    
+    context = {
+        'items': items,
+        'categories': categories,
+    }
+    return render(request, 'auction/home.html', context)
 def register(request):
     if request.method == 'POST':
-        name = request.POST['name']
-        print(name)
-        email = request.POST['email']
-        print(email)
-        phone = request.POST['phone']
-        print(phone)
-        password = request.POST['password']
-        print(password)
-        user = User.objects.all().values()
-        for i in user:
-            flag=0
-            dataemail = i['email']
-            if dataemail == email:
-                flag=1
-                return HttpResponse("Email id Already Exist")
-        if flag!=1:
-            new=User.objects.create(name=name,email=email,phone=phone,password=password )
-            new.save()
-            print(f"User Create with email {email}")
-            return HttpResponse(f"User Created Successfully with email {email}")
-    return render(request,'register.html')
-def applybid(request,id):
-    mail = access_global_variable()
-    print("Yaha pe ye mail ai h applybid mei --&gt;", mail)
-    item = Item.objects.get(id=id)
-    user = User.objects.get(email=mail)
-    print("user---&gt;", user.email)
-    # for i in user:
-    #     # print(&quot;i--&gt;&quot;,i)
-    #     if i.email == mail:
-    #         print(&quot;mail id--&gt;&quot;,i.email)
-    if request.method == "POST":
-        maximum=request.POST['max_bid']
-        item.max_bid = maximum
-        user.bid_amt = maximum
-        print("user.status---&gt;", user.status)
-        user.status = "Applied"
-        print("user.status---&gt;", user.status)
-        item.save()
-        user.save()
-        print("Hogya save")
-        maxbid(id)       
-        return redirect('/')
-    return render(request, 'applybid.html', {"item": item, "user": user})
-def home(request):
-    item = Item.objects.all()
-    return render(request, 'home.html', {"item": item})
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        password = request.POST.get('password', '')
+        
+        # Validation
+        if not all([name, email, phone, password]):
+            messages.error(request, 'All fields are required')
+            return render(request, 'auction/register.html')
+        
+        # Check if email already exists
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email already registered')
+            return render(request, 'auction/register.html')
+        
+        # Create user
+        try:
+            user = User.objects.create_user(
+                username=email,  # Using email as username
+                email=email,
+                password=password,
+                first_name=name
+            )
+            
+            # Create user profile
+            UserProfile.objects.create(
+                user=user,
+                phone=phone
+            )
+            
+            messages.success(request, 'Registration successful! Please login.')
+            return redirect('login')
+        except Exception as e:
+            messages.error(request, f'Registration failed: {str(e)}')
+            return render(request, 'auction/register.html')
+    
+    return render(request, 'auction/register.html')
+
+def login_view(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        
+        # Validation
+        if not email or not password:
+            messages.error(request, 'Email and password are required')
+            return render(request, 'auction/login.html')
+        
+        # Authenticate user
+        user = authenticate(request, username=email, password=password)
+        
+        if user is not None:
+            auth_login(request, user)
+            messages.success(request, f'Welcome {user.first_name}!')
+            return redirect('home')
+        else:
+            messages.error(request, 'Invalid email or password')
+            return render(request, 'auction/login.html')
+    
+    return render(request, 'auction/login.html')
+
+@login_required
+def logout_view(request):
+    auth_logout(request)
+    messages.success(request, 'Logged out successfully')
+    return redirect('home')
+
+    # Item listing view
+@login_required
+def create_item(request):
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        starting_bid = request.POST.get('starting_bid', '').strip()
+        condition = request.POST.get('condition', 'new')
+        image = request.FILES.get('image')
+        
+        if not all([title, description, starting_bid]):
+            messages.error(request, 'All fields are required')
+            return render(request, 'auction/create_item.html')
+        
+        try:
+            item = Item.objects.create(
+                title=title,
+                description=description,
+                starting_bid=float(starting_bid),
+                current_bid=float(starting_bid),
+                condition=condition,
+                seller=request.user,
+                image=image,
+                status='active'
+            )
+            messages.success(request, 'Item listed successfully!')
+            return redirect('home')
+        except Exception as e:
+            messages.error(request, f'Error creating item: {str(e)}')
+            return render(request, 'auction/create_item.html')
+    
+    return render(request, 'auction/create_item.html')
+
+    # Item detail view
+def item_detail(request, item_id):
+    try:
+        item = Item.objects.get(id=item_id)
+        bids = Bid.objects.filter(item=item).order_by('-amount')
+        return render(request, 'auction/item_detail.html', {'item': item, 'bids': bids})
+    except Item.DoesNotExist:
+        messages.error(request, 'Item not found')
+        return redirect('home')
+
+# Place bid view
+@login_required
+def place_bid(request, item_id):
+    if request.method == 'POST':
+        try:
+            item = Item.objects.get(id=item_id)
+            bid_amount = float(request.POST.get('bid_amount', 0))
+            
+            if bid_amount <= item.current_bid:
+                messages.error(request, 'Bid must be higher than current bid')
+                return redirect('item_detail', item_id=item_id)
+            
+            bid = Bid.objects.create(
+                item=item,
+                bidder=request.user,
+                amount=bid_amount
+            )
+            
+            item.current_bid = bid_amount
+            item.save()
+            
+            messages.success(request, 'Bid placed successfully!')
+            return redirect('item_detail', item_id=item_id)
+        except Item.DoesNotExist:
+            messages.error(request, 'Item not found')
+            return redirect('home')
+        except Exception as e:
+            messages.error(request, f'Error placing bid: {str(e)}')
+            return redirect('item_detail', item_id=item_id)
+    return redirect('home')
