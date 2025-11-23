@@ -179,23 +179,6 @@ online-auction/
 - Item (Foreign Key)
 - Added At
 
-## 📸 Screenshots
-
-### Homepage with Search & Filters
-![Homepage](https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800)
-*Homepage showing search bar, filters, and auction items with images*
-
-### Item Listings Grid
-![Item Grid](https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=800)
-*Grid layout displaying auction items with prices, status badges, and seller info*
-
-### Item Detail Page
-![Item Detail](https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800)
-*Detailed view of an auction item with bidding functionality*
-
-### Search Results
-![Search](https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800)
-*Filtered search results based on category, price range, and status*
 
 ## 🚀 Usage
 

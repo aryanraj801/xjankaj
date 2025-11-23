@@ -1,9 +1,9 @@
 statement.md
-# Project Statement: Online Auction System
+# ProjSect Statement: Online Auction System
 
 ---
 
-## Problem Statement
+## ProbVlem Statement
 
 ### Why is this Auction System Needed?
 
