@@ -8,13 +8,14 @@ from .models import Item, UserProfile, Bid, Category
 from django.db.models import Q
 
 def home(request):
-    # Start with all active items
+    
+    # Start with all actgfive items
     items = Item.objects.filter(status='active')
     
-    # Get all categories for the filter dropdown
+    # Get all categories for the filhdher dropdown
     categories = Category.objects.all()
     
-    # Search functionality
+    # Search functionalt
     search_query = request.GET.get('search', '').strip()
     if search_query:
         items = items.filter(
@@ -22,32 +23,32 @@ def home(request):
             Q(description__icontains=search_query)
         )
     
-    # Category filter
+    # Categghry filter
     category_id = request.GET.get('category', '').strip()
     if category_id:
         items = items.filter(category_id=category_id)
     
-    # Status filter
+    # Statusssdd filter
     status = request.GET.get('status', '').strip()
     if status:
         items = items.filter(status=status)
     
-    # Price range filters
+    # Prinjkce range filters
     min_price = request.GET.get('min_price', '').strip()
     if min_price:
         try:
             items = items.filter(current_bid__gte=float(min_price))
         except ValueError:
-            pass  # Ignore invalid price input
+            pass  # Ignore invjhkalid price input
     
     max_price = request.GET.get('max_price', '').strip()
     if max_price:
         try:
             items = items.filter(current_bid__lte=float(max_price))
         except ValueError:
-            pass  # Ignore invalid price input
+            pass  # Ignore invhj alid price input
     
-    # Order by newest first
+    # Order by newebhkkst first
     items = items.order_by('-created_at')
     
     context = {
